@@ -1005,7 +1005,7 @@ function initNaver(){
       return og.call(this,t,a);
     };
     let failed=false;
-    window.navermap_authFailure=()=>{ failed=true; setStatus('✗ 네이버 인증 실패 — Client ID와 등록한 서비스 URL(현재 '+location.origin+')을 확인하세요.'); };
+    window.navermap_authFailure=()=>{ failed=true; window.__naverAuthFail=true; setStatus('✗ 네이버 인증 실패 — Client ID와 등록한 서비스 URL(현재 '+location.origin+')을 확인하세요.'); };
     const sc=document.createElement('script');
     sc.src='https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId='+encodeURIComponent(NAVER_ID)+'&submodules=gl';
     sc.onerror=()=>{ setStatus('✗ 네이버 지도 스크립트를 불러오지 못했습니다'); reject(new Error('naver script')); };
@@ -1036,7 +1036,7 @@ function initNaver(){
           const cy=(y0+y1)/2+((pd.bottom-pd.top)/2)/(512*Math.pow(2,z));
           return {zoom:z,center:mercToLL((x0+x1)/2,cy)};
         },
-        getCanvas(){ const c=document.querySelectorAll('#map canvas'); let b=c[0]; c.forEach(x=>{ if(x.width>b.width) b=x; }); return b; },
+        getCanvas(){ const c=document.querySelectorAll('#map canvas'); let b=c[0]||null; c.forEach(x=>{ if(x.width>b.width) b=x; }); return b; },
         triggerRepaint(){ dirty=Math.max(dirty,2); },
         resize(){ try{ nm.setSize(new naver.maps.Size($('map').clientWidth,$('map').clientHeight)); }catch(e){} dirty=3; },
         loaded(){ return idle||performance.now()-tSet>1200; },
@@ -1045,7 +1045,8 @@ function initNaver(){
         setPaintProperty(){}, setFilter(){}, setTerrain(){}, addSource(){}, addLayer(){}, queryRenderedFeatures(){ return []; }
       };
       rend.push(paint);
-      const loop=()=>{ if(dirty>0) dirty--; rend.forEach(f=>f()); requestAnimationFrame(loop); };
+      setTimeout(()=>{ if(!map.getCanvas()) setStatus(window.__naverAuthFail ? '✗ 네이버 인증 실패 — 네이버 클라우드 콘솔의 Web 서비스 URL에 '+location.origin+' 가 등록·저장되어 있는지 확인하세요.' : '✗ 네이버 지도가 그려지지 않습니다. 새로고침해 보시고, 계속되면 네이버 Web 서비스 URL 등록('+location.origin+')을 확인하세요.'); },6000);
+      const loop=()=>{ if(dirty>0) dirty--; rend.forEach(f=>{ try{ f(); }catch(e){ console.warn(e); } }); requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
       setTimeout(()=>{ if(failed) reject(new Error('인증 실패')); else resolve(); },1500);
     })().catch(reject);
@@ -1146,7 +1147,7 @@ function paint(){
   if(!map||!route) return;
   const ctx=sctx;
   ctx.clearRect(0,0,W,H);
-  ctx.drawImage(map.getCanvas(),0,0,W,H);
+  const mc=map.getCanvas(); if(mc){ ctx.drawImage(mc,0,0,W,H); } else { ctx.fillStyle='#07060c'; ctx.fillRect(0,0,W,H); }
   if(ENGINE==='naver') drawNaverRoute(ctx);
   // gradients for legibility
   let g=ctx.createLinearGradient(0,0,0,LAY.gradTop); g.addColorStop(0,`rgba(${THEME.bg},.62)`); g.addColorStop(1,`rgba(${THEME.bg},0)`);
@@ -1420,7 +1421,7 @@ async function main(){
   $('naverId').onchange=()=>{ try{ localStorage.setItem('rf_naver_id',$('naverId').value.trim()); }catch(e){} location.reload(); };
   ['bright','saturation','terrain','buildings','bh','poiMode','mtkey'].forEach(id=>{ const e=$(id); const l=e&&e.closest('label'); if(l) l.hidden=true; });
   try{ await initMap(); }
-  catch(e){ console.warn(e); setStatus('✗ 네이버 지도를 시작하지 못했습니다 ('+e.message+'). 시작하기 파일로 열었는지, Client ID와 등록 URL(현재 '+location.origin+')을 확인한 뒤 새로고침하세요.'); return; }
+  catch(e){ console.warn(e); setStatus('✗ 네이버 지도를 시작하지 못했습니다 ('+e.message+'). Client ID와 네이버 Web 서비스 URL 등록(현재 '+location.origin+')을 확인한 뒤 새로고침하세요.'); return; }
   await usePreset('10k');
 
   $('course').onchange=async e=>{
