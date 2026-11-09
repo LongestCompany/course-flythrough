@@ -61,7 +61,7 @@ details[open] summary{margin-bottom:10px}
 #stage{height:min(84vh,880px);max-width:100%;aspect-ratio:1080/1350;background:#000;border-radius:12px;border:1px solid var(--line)}
 #scrub{width:min(480px,100%)}
 #status{color:var(--mute);font-size:12.5px;min-height:18px;text-align:center}
-#map{position:fixed;left:-3000px;top:0;width:540px;height:675px}
+#map{position:fixed;left:0;top:0;width:540px;height:675px;opacity:0.01;pointer-events:none;z-index:-1}
 .note{font-size:11.5px;color:var(--mute);line-height:1.55;margin:0}
 </style>
 </head>
@@ -1045,7 +1045,8 @@ function initNaver(){
         setPaintProperty(){}, setFilter(){}, setTerrain(){}, addSource(){}, addLayer(){}, queryRenderedFeatures(){ return []; }
       };
       rend.push(paint);
-      setTimeout(()=>{ if(!map.getCanvas()) setStatus(window.__naverAuthFail ? '✗ 네이버 인증 실패 — 네이버 클라우드 콘솔의 Web 서비스 URL에 '+location.origin+' 가 등록·저장되어 있는지 확인하세요.' : '✗ 네이버 지도가 그려지지 않습니다. 새로고침해 보시고, 계속되면 네이버 Web 서비스 URL 등록('+location.origin+')을 확인하세요.'); },6000);
+      const diag=()=>{ try{ return JSON.stringify({v:naver.maps.VERSION||'?',gl:!!(nm.isGLReady&&nm.isGLReady()),act:!!(nm._isGLModeActive&&nm._isGLModeActive()),cv:document.querySelectorAll('#map canvas').length,img:document.querySelectorAll('#map img').length,sz:[nm.getSize().width,nm.getSize().height],wgl:!!document.createElement('canvas').getContext('webgl')}); }catch(e){ return 'diag err '+e.message; } };
+      setTimeout(()=>{ if(!map.getCanvas()) setStatus((window.__naverAuthFail ? '✗ 네이버 인증 실패 — 네이버 클라우드 콘솔의 Web 서비스 URL에 '+location.origin+' 가 등록·저장되어 있는지 확인하세요.' : '✗ 네이버 지도가 그려지지 않습니다. 새로고침해 보시고, 계속되면 네이버 Web 서비스 URL 등록('+location.origin+')을 확인하세요.')+' [진단 '+diag()+']'); },6000);
       const loop=()=>{ if(dirty>0) dirty--; rend.forEach(f=>{ try{ f(); }catch(e){ console.warn(e); } }); requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
       setTimeout(()=>{ if(failed) reject(new Error('인증 실패')); else resolve(); },1500);
